@@ -1,24 +1,50 @@
-from sqlalchemy import create_engine, String
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-engine = create_engine("sqlite:///contacts.db")
+# Read customer contact information from the database.
 
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 
-class Base(DeclarativeBase):
-    pass
+from CustomerData import NameContact, AccountContact, PhoneContact
 
-
-class Customer(Base):
-    __tablename__ = "customers"
-
-    customer_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    email_address: Mapped[str | None] = mapped_column(
-        String(254), unique=True, nullable=True
-    )
-    phone_number: Mapped[str | None] = mapped_column(
-        String(30), nullable=True
-    )
+# Connect to the same database
+engine = create_engine("sqlite:///CustomerContactInfo.db")
 
 
-# Create the customers table
-Base.metadata.create_all(engine)
+def read_customers():
+    with Session(engine) as session:
+        customers = session.scalars(
+            select(NameContact).order_by(NameContact.customer_id)
+        ).all()
+
+        print("\n========== CUSTOMER CONTACTS ==========")
+
+        if not customers:
+            print("No customers found.")
+            return
+
+        for customer in customers:
+            email = session.scalars(
+                select(AccountContact).where(
+                    AccountContact.customer_id == customer.customer_id
+                )
+            ).first()
+
+            phone = session.scalars(
+                select(PhoneContact).where(
+                    PhoneContact.customer_id == customer.customer_id
+                )
+            ).first()
+
+            print(f"\nCustomer ID: {customer.customer_id}")
+            print(f"Name: {customer.full_name}")
+            print(
+                f"Email: {email.email_address if email else 'Not provided'}"
+            )
+            print(
+                f"Phone: {phone.phone_number if phone else 'Not provided'}"
+            )
+            print("---------------------------------------")
+
+
+if __name__ == "__main__":
+    read_customers()

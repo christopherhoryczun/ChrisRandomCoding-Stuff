@@ -1,144 +1,189 @@
-#This is the Personal information needed from every person that is coming to us for work on there car.
-#This will include their name, email, phone number, and any other relevant information that we may need to contact them.
-#This is only to verify that we have working data.
 
-#imports
+# Import the tools needed for the database and data validation
 import re
 
-#from data
-from sqlalchemy import create_engine, String, select
+from sqlalchemy import create_engine, String, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 
-# Create the database and or connect to the existing database
+
+# Connect to the SQLite database
 engine = create_engine("sqlite:///CustomerContactInfo.db")
 
-# Define the database table
+
+# Base class for all database tables
 class Base(DeclarativeBase):
     pass
 
-# Account Contact class for names
+
+# Store customer names and generate a unique customer ID
 class NameContact(Base):
     __tablename__ = "name_contacts"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    full_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Unique ID for each customer
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        autoincrement=True
+    )
 
-# Account Contact class for email addresses
+    # Customer's full name
+    full_name: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+
+
+# Store customer email addresses
 class AccountContact(Base):
     __tablename__ = "account_contacts"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    email_address: Mapped[str] = mapped_column(
-        String(254), unique=True, nullable=False
+    # Unique ID for each email record
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        autoincrement=True
     )
 
-# Account Contact class for phone numbers
+    # Email address must be unique
+    email_address: Mapped[str] = mapped_column(
+        String(254),
+        unique=True,
+        nullable=False
+    )
+
+    # Connect the email to the customer's ID
+    customer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("name_contacts.id"),
+        nullable=True
+    )
+
+
+# Store customer phone numbers
 class PhoneContact(Base):
     __tablename__ = "phone_contacts"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    phone_number: Mapped[str] = mapped_column(
-        String(30), nullable=False
+    # Unique ID for each phone record
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        autoincrement=True
     )
 
-# Create the table if it does not exist
+    # Customer's phone number
+    phone_number: Mapped[str] = mapped_column(
+        String(30),
+        nullable=False
+    )
+
+    # Connect the phone number to the customer's ID
+    customer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("name_contacts.id"),
+        nullable=True
+    )
+
+
+# Create any database tables that do not already exist
 Base.metadata.create_all(engine)
 
-#Customer Name
+
+# Collect and validate the customer's name
 def collect_name():
     while True:
-        name = input("Please enter your full name: ").strip()
+        full_name = input("Enter the customer's full name: ").strip()
 
-        # Check that the name is not empty and contains only letters and spaces
-        if not name or not re.fullmatch(r"[A-Za-z ]+", name):
-            print("Invalid name. Please enter a valid full name.")
+        # Make sure the name is not empty
+        if not full_name:
+            print("Name cannot be empty.")
             continue
 
-        print(f"Thank you! Your name '{name}' has been recorded.")
-        return
+        # Allow letters and spaces in the name
+        if not all(character.isalpha() or character.isspace()
+                   for character in full_name):
+            print("Please enter a name using letters and spaces only.")
+            continue
 
-# Email collection function
+        # Return the valid name to the calling program
+        return full_name
+
+
+# Collect and validate the customer's email address
 def collect_email():
-    valid_extensions = (".com", ".org", ".net", ".edu", ".gov")
+    # Accepted email domain endings
+    allowed_domains = (
+        ".com",
+        ".org",
+        ".net",
+        ".edu",
+        ".gov"
+    )
 
     while True:
-        email = input("Please enter your email address: ").strip().lower()
+        email_address = input("Enter the customer's email address: ").strip()
 
-        # Check that the email has exactly one @ symbol
-        if email.count("@") != 1:
-            print("Invalid email. Please enter a valid email address.")
+        # Make sure the email contains exactly one @ symbol
+        if email_address.count("@") != 1:
+            print("Invalid email. Please use exactly one @ symbol.")
             continue
 
-        # Check the email name and domain
-        username, domain = email.split("@")
+        # Separate the username and domain
+        username, domain = email_address.split("@")
 
-        if not username or not domain or "." not in domain:
-            print("Invalid email address.")
+        # Make sure both parts contain information
+        if not username or not domain:
+            print("Invalid email. Please enter a complete email address.")
             continue
 
-        # Check the email domain extension
-        if not domain.endswith(valid_extensions):
-            print(
-                "Invalid email domain. Use .com, .org, "
-                ".net, .edu, or .gov."
-            )
+        # Check that the domain ends with an accepted suffix
+        if not domain.lower().endswith(allowed_domains):
+            print("Email must end in .com, .org, .net, .edu, or .gov.")
             continue
 
-        # Save the email address to the database
-        with Session(engine) as session:
-            existing_email = session.query(AccountContact).filter_by(
-                email_address=email
-            ).first()
+        # Basic check for spaces
+        if any(character.isspace() for character in email_address):
+            print("Email addresses cannot contain spaces.")
+            continue
 
-            if existing_email:
-                print("This email address is already registered.")
-                return
+        # Return the valid email to the calling program
+        return email_address
 
-            new_contact = AccountContact(email_address=email)
-            session.add(new_contact)
-            session.commit()
 
-        print(f"Thank you! Your email address '{email}' has been added.")
-        return
-
-# Phone number collection function
+# Collect and validate the customer's phone number
 def collect_number():
     while True:
-        phone_number = input("Please enter your Phone Number: ").strip()
+        phone_number = input(
+            "Enter the customer's phone number: "
+        ).strip()
 
         # Allow digits, spaces, parentheses, and hyphens
-        if not re.fullmatch(r"[0-9() -]+", phone_number):
-            print("Invalid phone number. Please enter a valid phone number.")
-            continue
-
-        # Require at least one digit
-        if not any(char.isdigit() for char in phone_number):
-            print("Invalid phone number. Please enter a valid phone number.")
-            continue
-
-        # Require exactly 10 digits
-        digits = [char for char in phone_number if char.isdigit()]
-        if len(digits) != 10:
+        if not re.fullmatch(r"[0-9 ()-]+", phone_number):
             print(
-                f"Invalid phone number. You entered {len(digits)} digits. "
-                "Please enter exactly 10 digits."
+                "Invalid phone number. Use digits, spaces, "
+                "parentheses, or hyphens only."
             )
             continue
 
-        # Save the phone number to the database
-        with Session(engine) as session:
-            new_contact = PhoneContact(phone_number=phone_number)
-            session.add(new_contact)
-            session.commit()
+        # Remove formatting to check the number of digits
+        digits_only = re.sub(r"\D", "", phone_number)
 
-        print(
-            f"Thank you! Your phone number '{phone_number}' "
-            "has been added to your account."
-        )
-        return
+        # Require exactly 10 digits
+        if len(digits_only) != 10:
+            print("Phone number must contain exactly 10 digits.")
+            continue
 
-# Main function to run the program
+        # Return the valid phone number to the calling program
+        return phone_number
+
+
+# Run this section only when CustomerData.py is executed directly
+# Importing this file from AddCustomer.py will not prompt for information
 if __name__ == "__main__":
-    collect_name()
-    collect_email()
-    collect_number()
+    print("Customer Data Collection")
+
+    name = collect_name()
+    email = collect_email()
+    phone = collect_number()
+
+    # Display the collected information without saving it
+    print("\nCustomer information collected:")
+    print(f"Name: {name}")
+    print(f"Email: {email}")
+    print(f"Phone: {phone}")
+
+    print("\nRun AddCustomer.py to save the customer to the database.")
