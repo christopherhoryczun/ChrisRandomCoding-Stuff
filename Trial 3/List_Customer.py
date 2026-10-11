@@ -1,4 +1,3 @@
-```python
 # Import the database session and customer models
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -69,4 +68,3 @@ def list_customers():
 # Run the program when this file is executed directly
 if __name__ == "__main__":
     list_customers()
-```
