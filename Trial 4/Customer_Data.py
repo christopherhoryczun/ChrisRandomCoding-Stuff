@@ -1,7 +1,11 @@
+#This is the Personal information needed from every person that is coming to us for work on there car.
+#This will include their name, email, phone number, and any other relevant information that we may need to contact them.
+#This is only to verify that we have working data.
 
 # Import the tools needed for the database and data validation
 import re
 
+#from data
 from sqlalchemy import create_engine, String, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 
@@ -67,7 +71,7 @@ class PhoneContact(Base):
         ForeignKey("name_contacts.id"),
         nullable=True)
 
-#Store customer vehicle information
+# Store customer vehicle information
 
 # Create any database tables that do not already exist
 Base.metadata.create_all(engine)
